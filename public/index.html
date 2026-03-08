@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Shopping Cart</title>
+    <!-- Google Fonts for premium typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Boxicons for modern icons -->
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header Section -->
+        <header class="app-header">
+            <div class="header-content">
+                <div class="logo-area">
+                    <i class='bx bx-cart-alt' ></i>
+                    <h1>Smart Cart</h1>
+                </div>
+                <div class="header-actions">
+                    <button id="shareListBtn" class="icon-btn" title="Share List" aria-label="Share List">
+                        <i class='bx bx-share-alt'></i>
+                    </button>
+                    <!-- Small indicator for the share limit -->
+                    <span class="share-badge" title="Up to 10 people">10 <i class='bx bxs-group'></i></span>
+                </div>
+            </div>
+            
+            <div class="share-info-banner" id="shareBanner" style="display: none;">
+                <p>Anyone with this link can edit.</p>
+                <div class="link-copier">
+                    <input type="text" id="shareLinkInput" readonly>
+                    <button id="copyShareLinkBtn" class="btn-primary small">Copy</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Empty State -->
+            <div id="emptyState" class="empty-state">
+                <div class="empty-icon-wrapper">
+                    <i class='bx bx-shopping-bag'></i>
+                </div>
+                <h2>Your list is empty</h2>
+                <p>Scan a barcode or add items manually to start building your cart.</p>
+            </div>
+
+            <!-- Shopping List -->
+            <ul id="shoppingList" class="shopping-list">
+                <!-- Items will be injected here via JS -->
+            </ul>
+
+            <!-- Loading Indicator -->
+            <div id="loadingIndicator" class="loading-spinner-wrapper" style="display: none;">
+                <div class="spinner"></div>
+                <p>Loading your list...</p>
+            </div>
+        </main>
+
+        <!-- Floating Action Buttons -->
+        <div class="fab-container">
+            <button id="manualAddBtn" class="fab secondary-fab" aria-label="Add Item Manually">
+                <i class='bx bx-pencil' ></i>
+            </button>
+            <button id="scanBarcodeBtn" class="fab primary-fab" aria-label="Scan Barcode">
+                <i class='bx bx-barcode-reader'></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Scanner Modal Overlay -->
+    <div id="scannerModal" class="modal-overlay">
+        <div class="modal-content glass-effect">
+            <div class="modal-header">
+                <h3>Scan Barcode</h3>
+                <button id="closeScannerBtn" class="close-btn"><i class='bx bx-x'></i></button>
+            </div>
+            <div class="scanner-container" id="reader">
+                <!-- html5-qrcode injects UI here -->
+            </div>
+            <div class="scanner-status" id="scannerStatus">
+                Scanning for barcode...
+            </div>
+        </div>
+    </div>
+
+    <!-- Manual Add Modal Option in case scan fails or user prefers typing -->
+    <div id="manualAddModal" class="modal-overlay">
+        <div class="modal-content glass-effect">
+            <div class="modal-header">
+                <h3>Add Item</h3>
+                <button id="closeManualBtn" class="close-btn"><i class='bx bx-x'></i></button>
+            </div>
+            <form id="manualAddForm" class="manual-form">
+                <div class="form-group">
+                    <label for="itemNameInput">Item Name</label>
+                    <input type="text" id="itemNameInput" placeholder="e.g. Organic Bananas" required>
+                </div>
+                <div class="form-group">
+                    <label for="itemImageInput">Image URL (Optional)</label>
+                    <input type="url" id="itemImageInput" placeholder="https://example.com/image.jpg">
+                </div>
+                <button type="submit" class="btn-primary full-width">Add to List</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- html5-qrcode library -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script src="app.js"></script>
+</body>
+</html>

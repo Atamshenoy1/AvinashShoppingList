@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: shopping-list-app
+    env: node
+    buildCommand: npm install
+    startCommand: node server.js
+    disk:
+      name: sqlite-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: DB_PATH
+        value: /data/database.sqlite
+      - key: PORT
+        value: 10000
