@@ -13,8 +13,8 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Database Setup
-// Use DB_PATH from environment if provided (e.g., for Render persistent disks), otherwise default to local file
-const dbPath = process.env.DB_PATH || path.join(__dirname, 'database.sqlite');
+// Glitch uses a hidden .data folder for persistent data. We use that path if we aren't using DB_PATH from Render.
+const dbPath = process.env.DB_PATH || path.join(__dirname, '.data', 'database.sqlite');
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
         console.error('Error connecting to database:', err.message);
