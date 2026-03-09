@@ -1,16 +1,10 @@
 // === Configuration & State ===
-const API_BASE = '/api';
 const OPEN_FOOD_FACTS_API = 'https://world.openfoodfacts.org/api/v0/product/';
 
-let currentListId = null;
+let items = [];
 let html5QrcodeScanner = null;
 
 // === DOM Elements ===
-const shareListBtn = document.getElementById('shareListBtn');
-const shareBanner = document.getElementById('shareBanner');
-const shareLinkInput = document.getElementById('shareLinkInput');
-const copyShareLinkBtn = document.getElementById('copyShareLinkBtn');
-
 const shoppingListEl = document.getElementById('shoppingList');
 const emptyStateEl = document.getElementById('emptyState');
 const loadingIndicator = document.getElementById('loadingIndicator');
@@ -31,16 +25,13 @@ const itemImageInput = document.getElementById('itemImageInput');
 // === Initialization ===
 document.addEventListener('DOMContentLoaded', initApp);
 
-async function initApp() {
+function initApp() {
     setupEventListeners();
-    await initializeList();
+    loadItemsFromStorage();
+    renderItems();
 }
 
 function setupEventListeners() {
-    // Sharing
-    shareListBtn.addEventListener('click', toggleShareBanner);
-    copyShareLinkBtn.addEventListener('click', copyShareLink);
-
     // Modals
     scanBarcodeBtn.addEventListener('click', openScannerModal);
     closeScannerBtn.addEventListener('click', closeScannerModal);
@@ -58,118 +49,50 @@ function setupEventListeners() {
     manualAddForm.addEventListener('submit', handleManualAdd);
 }
 
-// === List Management ===
-async function initializeList() {
-    // Check URL parameters for an existing list ID
-    const urlParams = new URLSearchParams(window.location.search);
-    const idFromUrl = urlParams.get('list');
-
-    if (idFromUrl) {
-        currentListId = idFromUrl;
-        await fetchAndRenderListItems();
-    } else {
-        // Create a new list and update URL
-        await createNewList();
-    }
-
-    // Set up share link input
-    const shareUrl = `${window.location.origin}${window.location.pathname}?list=${currentListId}`;
-    shareLinkInput.value = shareUrl;
-}
-
-async function createNewList() {
-    try {
-        setLoading(true);
-        const response = await fetch(`${API_BASE}/lists`, { method: 'POST' });
-        const data = await response.json();
-        
-        if (data.id) {
-            currentListId = data.id;
-            // Update URL without reloading
-            const newUrl = `${window.location.pathname}?list=${currentListId}`;
-            window.history.pushState({ path: newUrl }, '', newUrl);
-            renderEmptyState();
+// === List Management (Local Storage) ===
+function loadItemsFromStorage() {
+    const stored = localStorage.getItem('smartShoppingList');
+    if (stored) {
+        try {
+            items = JSON.parse(stored);
+        } catch (e) {
+            console.error('Failed to parse local storage', e);
+            items = [];
         }
-    } catch (error) {
-        console.error('Error creating list:', error);
-        alert('Failed to create a new list. Please check your connection.');
-    } finally {
-        setLoading(false);
     }
 }
 
-async function fetchAndRenderListItems() {
-    try {
-        setLoading(true);
-        const response = await fetch(`${API_BASE}/lists/${currentListId}/items`);
-        const items = await response.json();
-        
-        renderItems(items);
-        
-        // Polling for updates (simple real-time sync mechanism)
-        // In a production app, WebSockets would be better, but polling is fine here
-        setInterval(pollForChanges, 5000);
-        
-    } catch (error) {
-        console.error('Error fetching items:', error);
-    } finally {
-        setLoading(false);
-    }
-}
-
-async function pollForChanges() {
-    if (!currentListId) return;
-    try {
-        const response = await fetch(`${API_BASE}/lists/${currentListId}/items`);
-        const items = await response.json();
-        // Simple re-render to catch external changes
-        // A more sophisticated app would compute differences
-        renderItems(items);
-    } catch (error) {
-        // Silently fail polling
-    }
+function saveItemsToStorage() {
+    localStorage.setItem('smartShoppingList', JSON.stringify(items));
 }
 
 // === Item Operations ===
-async function addItem(name, imageUrl) {
-    try {
-        const response = await fetch(`${API_BASE}/lists/${currentListId}/items`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, image_url: imageUrl })
-        });
-        
-        if (response.ok) {
-            await pollForChanges(); // Refresh list to get the new item with its ID
-        }
-    } catch (error) {
-        console.error('Error adding item:', error);
-        alert('Failed to add item.');
+function addItem(name, imageUrl) {
+    const newItem = {
+        id: Date.now().toString(),
+        name: name,
+        image_url: imageUrl,
+        checked: false
+    };
+    
+    items.unshift(newItem); // Add to beginning of list
+    saveItemsToStorage();
+    renderItems();
+}
+
+function toggleItemState(itemId) {
+    const item = items.find(i => i.id === itemId);
+    if (item) {
+        item.checked = !item.checked;
+        saveItemsToStorage();
+        renderItems();
     }
 }
 
-async function toggleItemState(itemId, currentCheckedStatus) {
-    try {
-        await fetch(`${API_BASE}/items/${itemId}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ checked: !currentCheckedStatus })
-        });
-        await pollForChanges();
-    } catch (error) {
-        console.error('Error updating item:', error);
-    }
-}
-
-async function deleteItem(itemId) {
-    try {
-        await fetch(`${API_BASE}/items/${itemId}`, {
-            method: 'DELETE'
-        });
-        await pollForChanges();
-    } catch (error) {
-        console.error('Error deleting item:', error);
-    }
+function deleteItem(itemId) {
+    items = items.filter(i => i.id !== itemId);
+    saveItemsToStorage();
+    renderItems();
 }
 
 // === Barcode Scanning & API Lookup ===
@@ -213,7 +136,7 @@ async function onScanSuccess(decodedText, decodedResult) {
             const productName = data.product.product_name || `Item (${decodedText})`;
             const imageUrl = data.product.image_url || data.product.image_front_url || '';
             
-            await addItem(productName, imageUrl);
+            addItem(productName, imageUrl);
             
             setTimeout(() => {
                 closeScannerModal();
@@ -253,27 +176,28 @@ function closeManualModal() {
     manualAddForm.reset();
 }
 
-async function handleManualAdd(e) {
+function handleManualAdd(e) {
     e.preventDefault();
     const name = itemNameInput.value.trim();
     const imageUrl = itemImageInput.value.trim();
     
     if (name) {
-        await addItem(name, imageUrl);
+        addItem(name, imageUrl);
         closeManualModal();
     }
 }
 
 // === UI Rendering ===
-function renderItems(items) {
+function renderItems() {
     shoppingListEl.innerHTML = '';
     
-    if (!items || items.length === 0) {
+    if (items.length === 0) {
         renderEmptyState();
         return;
     }
     
     emptyStateEl.style.display = 'none';
+    shoppingListEl.style.display = 'flex';
     
     items.forEach(item => {
         const li = document.createElement('li');
@@ -302,7 +226,7 @@ function renderItems(items) {
         
         // Event Listeners for the item
         const checkbox = li.querySelector('.item-checkbox');
-        checkbox.addEventListener('change', () => toggleItemState(item.id, item.checked));
+        checkbox.addEventListener('change', () => toggleItemState(item.id));
         
         const deleteBtn = li.querySelector('.delete-btn');
         deleteBtn.addEventListener('click', () => deleteItem(item.id));
@@ -314,44 +238,6 @@ function renderItems(items) {
 function renderEmptyState() {
     shoppingListEl.innerHTML = '';
     emptyStateEl.style.display = 'flex';
-}
-
-function setLoading(isLoading) {
-    if (isLoading) {
-        loadingIndicator.style.display = 'flex';
-        emptyStateEl.style.display = 'none';
-        shoppingListEl.style.display = 'none';
-    } else {
-        loadingIndicator.style.display = 'none';
-        shoppingListEl.style.display = 'flex';
-    }
-}
-
-// === Utility ===
-function toggleShareBanner() {
-    const isHidden = shareBanner.style.display === 'none';
-    shareBanner.style.display = isHidden ? 'block' : 'none';
-}
-
-function copyShareLink() {
-    shareLinkInput.select();
-    shareLinkInput.setSelectionRange(0, 99999); // For mobile devices
-    
-    try {
-        navigator.clipboard.writeText(shareLinkInput.value)
-            .then(() => {
-                const originalText = copyShareLinkBtn.textContent;
-                copyShareLinkBtn.textContent = 'Copied!';
-                copyShareLinkBtn.classList.add('success');
-                setTimeout(() => {
-                    copyShareLinkBtn.textContent = originalText;
-                    copyShareLinkBtn.classList.remove('success');
-                }, 2000);
-            });
-    } catch (err) {
-        // Fallback for older browsers
-        document.execCommand("copy");
-    }
 }
 
 // Simple HTML escaping to prevent XSS
